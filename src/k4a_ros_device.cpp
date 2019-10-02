@@ -1326,8 +1326,19 @@ void printTimestampDebugMessage(const std::string name, const ros::Time & timest
             max_lag = lag;
     }
     
-    ROS_DEBUG_STREAM(name << " timestamp lags ros::Time::now() by\n" 
-        << std::setw(23) << lag.toSec() * 1000.0 << " ms. "
-        << "The lag ranges from " << it->second.first.toSec() * 1000.0 << "ms"
+    #define PRINT_TIMESTAMP_DEBUG_MESSAGE \
+    ROS_DEBUG_STREAM_THROTTLE_NAMED(0.5, name, std::setw(15) << name << " timestamp lags ros::Time::now() by " \
+        << lag.toSec() * 1000.0 << " ms. " \
+        << "The lag ranges from " << it->second.first.toSec() * 1000.0 << "ms" \
         <<" to " << it->second.second.toSec() * 1000.0 << "ms.");
+
+    if (name.compare("IMU") == 0)
+    {
+        PRINT_TIMESTAMP_DEBUG_MESSAGE
+    }
+    else
+    {
+        PRINT_TIMESTAMP_DEBUG_MESSAGE
+    }
+    
 }

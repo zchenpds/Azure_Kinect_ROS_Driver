@@ -693,11 +693,20 @@ k4a_result_t K4AROSDevice::fillPointCloud(const k4a::image& pointcloud_image, se
   return K4A_RESULT_SUCCEEDED;
 }
 
+#include <fstream>
+#include <iomanip>
+std::ofstream myfile("/home/ral2020/Documents/data_sync/k4a_gyro_ts.csv", std::ofstream::out);
+
 k4a_result_t K4AROSDevice::getImuFrame(const k4a_imu_sample_t& sample, sensor_msgs::ImuPtr& imu_msg)
 {
   imu_msg->header.frame_id = calibration_data_.tf_prefix_ + calibration_data_.imu_frame_;
   imu_msg->header.stamp = timestampToROS(sample.acc_timestamp_usec);
   printTimestampDebugMessage("IMU", imu_msg->header.stamp);
+  myfile << std::setprecision(15)
+    << imu_msg->header.stamp.toSec() << ", " 
+    << ros::Time::now() << ", " 
+    << device_to_realtime_offset_.count() << ", " 
+    << sample.gyro_timestamp_usec << std::endl;
 
   // The correct convention in ROS is to publish the raw sensor data, in the
   // sensor coordinate frame. Do that here.
@@ -1406,9 +1415,15 @@ void K4AROSDevice::initializeTimestampOffset(const std::chrono::microseconds& k4
                   << device_to_realtime_offset_.count() << " ns");
 }
 
+std::ofstream myfile2("/home/ral2020/Documents/data_sync/k4a_image_ts.csv", std::ofstream::out);
+
 void K4AROSDevice::updateTimestampOffset(const std::chrono::microseconds& k4a_device_timestamp_us,
                                          const std::chrono::nanoseconds& k4a_system_timestamp_ns)
 {
+  myfile2 << std::setprecision(15)
+    << k4a_device_timestamp_us.count() << ", " 
+    << timestampToROS(k4a_device_timestamp_us) << ", "
+    << ros::Time::now() << std::endl;
   // System timestamp is on monotonic system clock.
   // Device time is on AKDK hardware clock.
   // We want to continuously estimate diff between realtime and AKDK hardware clock as low-pass offset.

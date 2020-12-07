@@ -163,6 +163,8 @@ class K4AROSDevice
 #endif
 
   std::chrono::nanoseconds device_to_realtime_offset_{0};
+  std::chrono::nanoseconds pts_to_system_offset_{0}; 
+  std::mutex pts_to_system_offset_mutex_; 
 
   // Thread control
   volatile bool running_;

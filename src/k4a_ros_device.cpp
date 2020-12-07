@@ -1263,6 +1263,13 @@ void K4AROSDevice::imuPublisherThread()
 
         if (read)
         {
+          { 
+            auto pts_to_system = std::chrono::steady_clock::now().time_since_epoch() - std::chrono::microseconds(sample.acc_timestamp_usec);
+            std::lock_guard<std::mutex> lck(pts_to_system_offset_mutex_);
+            
+            // If pts_to_system_offset_ == 0, initialize it; otherwise, if it is larger than pts_to_system, update it.
+            pts_to_system_offset_ = pts_to_system_offset_.count() ? min(pts_to_system_offset_, pts_to_system) : pts_to_system;
+          }
           if (throttling)
           {
             accumulated_samples.push_back(sample);
@@ -1414,9 +1421,21 @@ void K4AROSDevice::updateTimestampOffset(const std::chrono::microseconds& k4a_de
   std::chrono::nanoseconds monotonic_to_realtime = realtime_clock - monotonic_clock;
 
   // Next figure out the other part (combined).
-  std::chrono::nanoseconds device_to_realtime =
-      k4a_system_timestamp_ns - k4a_device_timestamp_us + monotonic_to_realtime;
-  // If we're over a second off, just snap into place.
+  std::chrono::nanoseconds device_to_realtime = device_to_realtime_offset_;
+  {
+    std::chrono::nanoseconds pts_to_system = k4a_system_timestamp_ns - k4a_device_timestamp_us;
+    std::lock_guard<std::mutex> lck(pts_to_system_offset_mutex_); 
+
+    // If pts_to_system_offset_ == 0, initialize it; otherwise, if it is larger than pts_to_system, update it.
+    pts_to_system_offset_ = pts_to_system_offset_.count() ? min(pts_to_system_offset_, pts_to_system) : pts_to_system;
+
+    // The max clock drift rate per sampling period assuming a worst-case accuracy of 100 ppm
+    const std::chrono::nanoseconds max_clock_drift_rate{100 * 1000 / params_.fps};
+    device_to_realtime = pts_to_system_offset_ + monotonic_to_realtime; 
+    pts_to_system_offset_ += max_clock_drift_rate;
+  }
+
+  // If we're over 10 milliseconds off, just snap into place.
   if (device_to_realtime_offset_.count() == 0 ||
       std::abs((device_to_realtime_offset_ - device_to_realtime).count()) > 1e7)
   {

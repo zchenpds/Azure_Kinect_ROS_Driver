@@ -4,7 +4,7 @@ const double MOCAP_FREQ = 210.0;
 const double KINECT_FREQ = 30.0;
 const int MOCAP_PERIOD_US = 1e6 / MOCAP_FREQ;
 const int KINECT_PERIOD_US = 1e6 / KINECT_FREQ;
-const int KINECT_TIMEOUT_US = 250;
+const int KINECT_TIMEOUT_US = 150;
 const int KINECT_TRIGGER_OFFSET_US = 0;
 const int EDGE_CNT_TARGET = (int)(MOCAP_FREQ / KINECT_FREQ + 0.5);
 
@@ -45,6 +45,7 @@ void loop() {
   static int edge_cnt = 0;
   static bool trigger_after_offset = false;
   static int next_trigger_time_us = t;
+  static int kinect_period_us = KINECT_PERIOD_US;
   
   int delta_val = val - val_prev;
   if (delta_val > RISE_THRESHOLD && t - t_prev_rising > MOCAP_PERIOD_US * 0.9) {
@@ -53,14 +54,16 @@ void loop() {
     t_prev_rising = t;
   }
 
-//  if (t - t_prev_sync >= KINECT_PERIOD_US + KINECT_TIMEOUT_US) {
-//    triggerCapture();
-//    t_prev_sync += KINECT_PERIOD_US; 
-//  }
-
   if (edge_cnt >= EDGE_CNT_TARGET) {
+    kinect_period_us = (t - t_prev_sync) * 0.1 + kinect_period_us * 0.9;
     t_prev_sync = t;
     next_trigger_time_us = t + KINECT_TRIGGER_OFFSET_US;
+    trigger_after_offset = true;
+    edge_cnt = 0;
+  }
+  else if (t - t_prev_sync >= KINECT_PERIOD_US + KINECT_TIMEOUT_US) {
+    t_prev_sync += kinect_period_us;
+    next_trigger_time_us = t_prev_sync + KINECT_TRIGGER_OFFSET_US;
     trigger_after_offset = true;
     edge_cnt = 0;
   }
@@ -72,6 +75,10 @@ void loop() {
   
   if (t - t_prev_freq >= 1e6) {
     Serial.print(1e6 / (t - t_prev_freq) * freq);
+    Serial.print(',');
+    Serial.print(kinect_period_us);
+    Serial.print(',');
+    Serial.print(KINECT_PERIOD_US);
     Serial.print(',');
     Serial.println(capture_trigger_cnt);
     t_prev_freq = t;

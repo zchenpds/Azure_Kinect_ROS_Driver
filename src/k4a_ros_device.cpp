@@ -45,6 +45,7 @@ K4AROSDevice::K4AROSDevice(const NodeHandle& n, const NodeHandle& p)
     node_(n),
     private_node_(p),
     image_transport_(n),
+    owt_(std::chrono::seconds(1)),
     last_capture_time_usec_(0),
     last_imu_time_usec_(0),
     imu_stream_end_of_file_(false)
@@ -335,6 +336,16 @@ k4a_result_t K4AROSDevice::startCameras()
   // Prevent the worker thread from exiting immediately
   running_ = true;
 
+  if (params_.wired_sync_mode == 2)
+  {
+    if (system("echo 'B' > /dev/ttyACM0"))
+    {
+      ROS_ERROR("Cannot write to /dev/ttyACM0. Make sure the sync board is connected.");
+      return K4A_RESULT_FAILED;
+    }
+    ROS_INFO("External (Teensy) trigger signal enabled.");
+  }
+
   // Start the thread that will poll the cameras and publish frames
   frame_publisher_thread_ = thread(&K4AROSDevice::framePublisherThread, this);
 #if defined(K4A_BODY_TRACKING)
@@ -360,6 +371,15 @@ k4a_result_t K4AROSDevice::startImu()
 
 void K4AROSDevice::stopCameras()
 {
+  if (params_.wired_sync_mode == 2)
+  {
+    if (system("echo 'S' > /dev/ttyACM0"))
+    {
+      ROS_ERROR("Cannot write to /dev/ttyACM0. Please manually reset the sync board.");
+    }
+    ROS_INFO("External (Teensy) trigger signal disabled.");
+  }
+
   if (k4a_device_)
   {
     // Stop the K4A SDK
@@ -1141,7 +1161,7 @@ void K4AROSDevice::framePublisherThread()
     }
 
     ros::spinOnce();
-    loop_rate.sleep();
+    // loop_rate.sleep();
   }
 }
 
@@ -1154,8 +1174,6 @@ void K4AROSDevice::bodyPublisherThread()
     {
       k4abt::frame body_frame = k4abt_tracker_.pop_result();
       --k4abt_tracker_queue_size_;
-      auto capture_time = timestampToROS(body_frame.get_device_timestamp());
-      ROS_INFO_STREAM("Body tracking delay: " << (ros::Time::now() - capture_time).toSec() * 1000.0 << " ms.");
 
       if (body_frame == nullptr)
       {
@@ -1165,6 +1183,9 @@ void K4AROSDevice::bodyPublisherThread()
       }
       else
       {
+        auto capture_time = timestampToROS(body_frame.get_device_timestamp());
+        printTimestampDebugMessage("Body Tracking", capture_time);
+        
         if (body_marker_publisher_.getNumSubscribers() > 0)
         {
           // Joint marker array
@@ -1207,9 +1228,9 @@ void K4AROSDevice::bodyPublisherThread()
         }
       }
     }
-    else 
+    else
     {
-      std::this_thread::sleep_for(std::chrono::milliseconds{20});
+      std::this_thread::sleep_for(std::chrono::milliseconds{ 20 });
     }
   }
 }
@@ -1264,6 +1285,8 @@ void K4AROSDevice::imuPublisherThread()
 
         if (read)
         {
+          // Update clock offset
+          owt_(std::chrono::microseconds(sample.acc_timestamp_usec), std::chrono::steady_clock::now().time_since_epoch());
           if (throttling)
           {
             accumulated_samples.push_back(sample);
@@ -1415,9 +1438,9 @@ void K4AROSDevice::updateTimestampOffset(const std::chrono::microseconds& k4a_de
   std::chrono::nanoseconds monotonic_to_realtime = realtime_clock - monotonic_clock;
 
   // Next figure out the other part (combined).
-  std::chrono::nanoseconds device_to_realtime =
-      k4a_system_timestamp_ns - k4a_device_timestamp_us + monotonic_to_realtime;
-  // If we're over a second off, just snap into place.
+  std::chrono::nanoseconds device_to_realtime = owt_(k4a_device_timestamp_us, monotonic_clock) + monotonic_to_realtime;
+
+  // If we're over 10 milliseconds off, just snap into place.
   if (device_to_realtime_offset_.count() == 0 ||
       std::abs((device_to_realtime_offset_ - device_to_realtime).count()) > 1e7)
   {
@@ -1428,7 +1451,7 @@ void K4AROSDevice::updateTimestampOffset(const std::chrono::microseconds& k4a_de
   else
   {
     // Low-pass filter!
-    constexpr double alpha = 0.10;
+    constexpr double alpha = 0.1;
     device_to_realtime_offset_ = device_to_realtime_offset_ +
                                  std::chrono::nanoseconds(static_cast<int64_t>(
                                      std::floor(alpha * (device_to_realtime - device_to_realtime_offset_).count())));
@@ -1437,6 +1460,7 @@ void K4AROSDevice::updateTimestampOffset(const std::chrono::microseconds& k4a_de
 
 void printTimestampDebugMessage(const std::string& name, const ros::Time& timestamp)
 {
+  return;
   ros::Duration lag = ros::Time::now() - timestamp;
   static std::map<const std::string, std::pair<ros::Duration, ros::Duration>> map_min_max;
   auto it = map_min_max.find(name);

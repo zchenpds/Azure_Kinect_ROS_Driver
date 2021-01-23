@@ -33,7 +33,7 @@
 //
 #include "azure_kinect_ros_driver/k4a_calibration_transform_data.h"
 #include "azure_kinect_ros_driver/k4a_ros_device_params.h"
-
+#include "azure_kinect_ros_driver/owt.h"
 class K4AROSDevice
 {
  public:
@@ -86,7 +86,9 @@ class K4AROSDevice
                                    sensor_msgs::PointCloud2Ptr& point_cloud);
 
   void framePublisherThread();
+#if defined(K4A_BODY_TRACKING)
   void bodyPublisherThread();
+#endif
   void imuPublisherThread();
 
   // Gets a timestap from one of the captures images
@@ -161,6 +163,7 @@ class K4AROSDevice
 #endif
 
   std::chrono::nanoseconds device_to_realtime_offset_{0};
+  Owt<std::chrono::nanoseconds> owt_;
 
   // Thread control
   volatile bool running_;

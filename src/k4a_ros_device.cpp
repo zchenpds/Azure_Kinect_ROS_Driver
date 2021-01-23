@@ -334,6 +334,16 @@ k4a_result_t K4AROSDevice::startCameras()
   // Prevent the worker thread from exiting immediately
   running_ = true;
 
+  if (params_.wired_sync_mode == 2)
+  {
+    if (system("echo 'B' > /dev/ttyACM0"))
+    {
+      ROS_ERROR("Cannot write to /dev/ttyACM0. Make sure the sync board is connected.");
+      return K4A_RESULT_FAILED;
+    }
+    ROS_INFO("External (Teensy) trigger signal enabled.");
+  }
+
   // Start the thread that will poll the cameras and publish frames
   frame_publisher_thread_ = thread(&K4AROSDevice::framePublisherThread, this);
 #if defined(K4A_BODY_TRACKING)
@@ -359,6 +369,15 @@ k4a_result_t K4AROSDevice::startImu()
 
 void K4AROSDevice::stopCameras()
 {
+  if (params_.wired_sync_mode == 2)
+  {
+    if (system("echo 'S' > /dev/ttyACM0"))
+    {
+      ROS_ERROR("Cannot write to /dev/ttyACM0. Please manually reset the sync board.");
+    }
+    ROS_INFO("External (Teensy) trigger signal disabled.");
+  }
+
   if (k4a_device_)
   {
     // Stop the K4A SDK
@@ -1139,7 +1158,7 @@ void K4AROSDevice::framePublisherThread()
     }
 
     ros::spinOnce();
-    loop_rate.sleep();
+    // loop_rate.sleep();
   }
 }
 
@@ -1455,6 +1474,7 @@ void K4AROSDevice::updateTimestampOffset(const std::chrono::microseconds& k4a_de
 
 void printTimestampDebugMessage(const std::string& name, const ros::Time& timestamp)
 {
+  return;
   ros::Duration lag = ros::Time::now() - timestamp;
   static std::map<const std::string, std::pair<ros::Duration, ros::Duration>> map_min_max;
   auto it = map_min_max.find(name);

@@ -36,7 +36,7 @@ public:
     if (deq_.empty())
     {
       deq_.emplace_back(t);
-      return sys;
+      return sys - pts;
     }
 
     while (deq_.size() && getOffset(deq_.back()) >= getOffset(t)) {

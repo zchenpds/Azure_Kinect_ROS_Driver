@@ -1010,7 +1010,7 @@ void K4AROSDevice::framePublisherThread()
 
 #if defined(K4A_BODY_TRACKING)
         // Publish body markers when body tracking is enabled and a depth image is available
-        if (params_.body_tracking_enabled &&
+        if (params_.body_tracking_enabled &&  k4abt_tracker_queue_size_ < 3 &&
             (body_marker_publisher_.getNumSubscribers() > 0 || body_index_map_publisher_.getNumSubscribers() > 0))
         {
           if (!k4abt_tracker_.enqueue_capture(capture))
@@ -1465,6 +1465,8 @@ void printTimestampDebugMessage(const std::string& name, const ros::Time& timest
 {
   return;
   ros::Duration lag = ros::Time::now() - timestamp;
+  static std::mutex mtx;
+  std::lock_guard<std::mutex> lck(mtx);
   static std::map<const std::string, std::pair<ros::Duration, ros::Duration>> map_min_max;
   auto it = map_min_max.find(name);
   if (it == map_min_max.end())

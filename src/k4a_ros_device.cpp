@@ -316,7 +316,10 @@ k4a_result_t K4AROSDevice::startCameras()
   // When calibration is initialized the body tracker can be created with the device calibration
   if (params_.body_tracking_enabled)
   {
-    k4abt_tracker_ = k4abt::tracker::create(calibration_data_.k4a_calibration_);
+    k4abt_tracker_config_ = K4ABT_TRACKER_CONFIG_DEFAULT;
+    k4abt_tracker_config_.model_path = params_.body_tracking_model_path.c_str();
+    k4abt_tracker_ = k4abt::tracker::create(calibration_data_.k4a_calibration_, k4abt_tracker_config_);
+    
     k4abt_tracker_.set_temporal_smoothing(params_.body_tracking_smoothing_factor);
   }
 #endif

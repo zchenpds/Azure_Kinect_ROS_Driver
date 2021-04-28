@@ -77,7 +77,10 @@
               int, 0)                                                                                                  \
   LIST_ENTRY(subordinate_delay_off_master_usec,                                                                        \
               "Delay subordinate camera off master camera by specified amount in usec.",                               \
-              int, 0)
+              int, 0)                                                                                                  \
+  LIST_ENTRY(body_tracking_model_path,                                                                                 \
+              "Path to the dnn model file defaulted to /usr/bin/dnn_model_2_0_op11.onnx.",                             \
+              std::string, std::string("/usr/bin/dnn_model_2_0_op11.onnx"))
 
 class K4AROSDeviceParams
 {

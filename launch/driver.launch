@@ -38,7 +38,8 @@ Licensed under the MIT License.
   <arg name="sensor_sn"               default="" />               <!-- Sensor serial number. If none provided, the first sensor will be selected -->
   <arg name="recording_file"          default="" />               <!-- Absolute path to a mkv recording file which will be used with the playback api instead of opening a device -->
   <arg name="recording_loop_enabled"  default="false" />          <!-- If set to true the recording file will rewind the beginning once end of file is reached -->
-  <arg name="body_tracking_enabled"           default="true" />  <!-- If set to true the joint positions will be published as marker arrays -->
+  <arg name="body_tracking_enabled"   default="true" />          <!-- If set to true the joint positions will be published as marker arrays -->
+  <arg name="body_tracking_model_path" default="/usr/bin/dnn_model_2_0_op11.onnx" />     <!-- Path to the dnn model file -->
   <arg name="body_tracking_smoothing_factor"  default="0.0" />    <!-- Set between 0 for no smoothing and 1 for full smoothing -->
   <arg name="rescale_ir_to_mono8"  default="false" />    <!-- Whether to rescale the IR image to an 8-bit monochrome image for visualization and further processing. A scaling factor (ir_mono8_scaling_factor) is applied. -->
   <arg name="ir_mono8_scaling_factor"  default="1.0" />    <!-- Scaling factor to apply when converting IR to mono8 (see rescale_ir_to_mono8). If using illumination, use the value 0.5-1. If using passive IR, use 10. -->
@@ -61,6 +62,7 @@ Licensed under the MIT License.
     <param name="recording_file"          type="string" value="$(arg recording_file)" />
     <param name="recording_loop_enabled"  type="bool"   value="$(arg recording_loop_enabled)" />
     <param name="body_tracking_enabled"           type="bool"   value="$(arg body_tracking_enabled)" />
+    <param name="body_tracking_model_path"        type="string" value="$(arg body_tracking_model_path)" />
     <param name="body_tracking_smoothing_factor"  type="double" value="$(arg body_tracking_smoothing_factor)" />
     <param name="rescale_ir_to_mono8" type="bool" value="$(arg rescale_ir_to_mono8)" />
     <param name="ir_mono8_scaling_factor" type="double" value="$(arg ir_mono8_scaling_factor)" />

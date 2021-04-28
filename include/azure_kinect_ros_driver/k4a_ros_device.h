@@ -159,6 +159,7 @@ class K4AROSDevice
   // Body tracker
   k4abt::tracker k4abt_tracker_;
   std::atomic_int16_t k4abt_tracker_queue_size_;
+  k4abt_tracker_configuration_t k4abt_tracker_config_;
   std::thread body_publisher_thread_;
 #endif
 

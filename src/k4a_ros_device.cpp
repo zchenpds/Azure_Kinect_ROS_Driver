@@ -757,7 +757,7 @@ k4a_result_t K4AROSDevice::getBodyMarker(const k4abt_body_t& body, MarkerPtr mar
 
   Color color = BODY_COLOR_PALETTE[body.id % BODY_COLOR_PALETTE.size()];
 
-  marker_msg->color.a = color.a;
+  marker_msg->color.a = body.skeleton.joints[jointType].confidence_level * 0.5;
   marker_msg->color.r = color.r;
   marker_msg->color.g = color.g;
   marker_msg->color.b = color.b;
